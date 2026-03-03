@@ -92,12 +92,13 @@ function ReceptionistDashboard() {
   // Sidebar menu items
   const mainMenuItems = [
     { id: "dashboard", label: "Dashboard", icon: "🏠", path: "/receptionist-dashboard" },
+    { id: "appointments", label: "Appointments", icon: "📅", path: "/receptionist-dashboard/appointment" },
     { id: "patients", label: "Patients", icon: "👥", path: "/receptionist-dashboard/patientlist" },
     { id: "admit-patient", label: "Admit Patient", icon: "🛏️", path: "/receptionist-dashboard/admitlist" },
     { id: "bedview", label: "Bed View", icon: "📊", path: "/receptionist-dashboard/bedview" },
-    { id: "appointments", label: "Appointments", icon: "📅", path: "/receptionist-dashboard/appointment" },
+    
     { id: "laboratory", label: "Laboratory", icon: "🔬", path: "/receptionist-dashboard/laboratory" },
-    { id: "services", label: "Services", icon: "🏥", path: "/receptionist-dashboard/services" },
+   
   ];
 
   return (

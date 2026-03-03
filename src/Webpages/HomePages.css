@@ -412,7 +412,7 @@ nav a:hover {
 .form-row input {
   flex: 1;
   padding: 12px 15px;
-  margin: 8px 0;
+  /* margin: 8px 0; */
   border: 2px solid #e2e8f0;
   border-radius: 10px;
   font-size: 14px;
@@ -601,8 +601,8 @@ nav a:hover {
 }
 
 * {
-  margin: 0;
-  padding: 0;
+  /* margin: 0; */
+  /* padding: 0; */
   box-sizing: border-box;
   font-family: 'Segoe UI', sans-serif;
 }

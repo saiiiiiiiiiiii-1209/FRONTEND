@@ -96,6 +96,7 @@ input[type="number"] {
   min-height: 100vh;
   background: var(--gray-100);
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  overflow: hidden;  /* ✅ YEH LINE ADD KARO */
 }
 
 /* ==================== SIDEBAR ==================== */
@@ -111,6 +112,7 @@ input[type="number"] {
   z-index: 100;
   box-shadow: 10px 0 30px rgba(0, 0, 0, 0.2);
   border-right: 1px solid rgba(255, 255, 255, 0.05);
+  overflow-x: hidden;
 }
 
 /* Modern glass morphism effect */
@@ -192,7 +194,7 @@ input[type="number"] {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 15px 0 20px;
+  padding: 1px 0 20px;
   overflow-y: auto;
 }
 
@@ -300,7 +302,7 @@ input[type="number"] {
   transform: scale(1.02);
 }
 
-/* Active indicator line */
+/* Active indicator line
 .sidebar-menu li a.active::before {
   content: '';
   position: absolute;
@@ -313,7 +315,9 @@ input[type="number"] {
   border-radius: 0 5px 5px 0;
   box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
   animation: pulseGlow 2s infinite;
-}
+} */
+
+
 
 @keyframes pulseGlow {
   0%, 100% { opacity: 0.8; }
@@ -381,7 +385,7 @@ input[type="number"] {
 /* ==================== LOGOUT BUTTON ==================== */
 .logout-container {
   margin: 20px 15px 25px;
-  padding-top: 20px;
+  padding-top: 50px;
   border-top: 2px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -484,6 +488,7 @@ input[type="number"] {
   background: linear-gradient(135deg, var(--gray-100) 0%, #ffffff 100%);
   min-height: 100vh;
   transition: var(--transition);
+  overflow-x: hidden; 
 }
 
 /* ==================== DASHBOARD HOME STYLES ==================== */
@@ -1691,3 +1696,32 @@ input[type="number"] {
 
 
 
+/* Main container - ye already hai, isme overflow: hidden add karo */
+.reception-container {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;  /* ✅ YEH LINE ADD KARO - page level scroll rokta hai */
+}
+
+/* Sidebar - ye already hai, isme overflow-x: hidden add karo */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #1e2b4a 0%, #2a3b5c 100%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;  /* ✅ YEH LINE ADD KARO - sidebar mein horizontal scroll rokta hai */
+}
+
+/* Main content - ye already hai, isme overflow-x: hidden add karo */
+.main-content {
+  flex: 1;
+  background: #f8f9fa;
+  overflow-y: auto;
+  overflow-x: hidden;  /* ✅ YEH LINE ADD KARO - main content mein horizontal scroll rokta hai */
+  padding: 20px;
+  height: 100vh;
+}

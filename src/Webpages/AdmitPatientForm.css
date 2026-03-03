@@ -18,7 +18,9 @@
   color: #EF4444;
   margin-left: 4px;
 }
-
+.form-groupp{
+  margin-top: 23px;
+}
 .patient-search-container input {
   width: 100%;
   padding: 14px 18px;

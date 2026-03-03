@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import "./BedView.css";
+import "./BedView.css"; // Same CSS file
 
-const BedView = ({ totalBeds = 20 }) => {
+const DoctorBedView = ({ totalBeds = 20 }) => {
   const navigate = useNavigate();
   const context = useOutletContext();
   const contextAdmissions = context?.admissions || [];
@@ -18,16 +18,16 @@ const BedView = ({ totalBeds = 20 }) => {
         const data = await response.json();
         if (data.success) {
           setApiAdmissions(data.data);
-          console.log("🛏️ BedView fetched API admissions:", data.data);
+          console.log("🛏️ Doctor BedView fetched API admissions:", data.data);
         }
       } catch (error) {
-        console.error("❌ BedView API fetch failed, using context only:", error);
+        console.error("❌ Doctor BedView API fetch failed, using context only:", error);
       }
     };
     fetchAdmissions();
   }, []);
 
-  // Merge API admissions + context admissions (API takes priority, avoid duplicates)
+  // Merge API admissions + context admissions
   const admissions = (() => {
     const merged = [...apiAdmissions];
     const apiIds = new Set(apiAdmissions.map(a => String(a.id)));
@@ -40,17 +40,7 @@ const BedView = ({ totalBeds = 20 }) => {
     return merged;
   })();
 
-  // Log admissions for debugging
-  useEffect(() => {
-    console.log("🛏️ BedView total admissions:", admissions.length, admissions);
-    // Log all field names of first admission to help debug
-    if (admissions.length > 0) {
-      console.log("🛏️ First admission keys:", Object.keys(admissions[0]));
-      console.log("🛏️ First admission full data:", JSON.stringify(admissions[0], null, 2));
-    }
-  }, [admissions]);
-
-  // Helper: get patient name from any possible field
+  // Helper: get patient name
   const getPatientName = (admission) => {
     return admission.patientName
       || admission.patient_name
@@ -64,15 +54,10 @@ const BedView = ({ totalBeds = 20 }) => {
 
   const bedNumbers = Array.from({ length: totalBeds }, (_, i) => `B${i + 1}`);
 
-  // Helper to check if admission is active (Admitted status and not discharged)
+  // Helper to check if admission is active
   const isActiveAdmission = (admission) => {
-    // Only consider as active if status is "Admitted"
     if (admission.status !== "Admitted") return false;
-
-    // If no toDate, it's active
     if (!admission.toDate) return true;
-
-    // Check if discharge date is in future
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dischargeDate = new Date(admission.toDate);
@@ -80,7 +65,7 @@ const BedView = ({ totalBeds = 20 }) => {
     return dischargeDate >= today;
   };
 
-  // Get only active (admitted) patients for bed occupancy
+  // Get only active (admitted) patients
   const occupiedBeds = admissions.reduce((map, admission) => {
     if (isActiveAdmission(admission)) {
       map[admission.bedNo] = admission;
@@ -108,7 +93,7 @@ const BedView = ({ totalBeds = 20 }) => {
   };
 
   const handleBackToDashboard = () => {
-    navigate("/receptionist-dashboard");
+    navigate("/doctor-dashboard"); // ✅ Doctor dashboard par jayega
   };
 
   return (
@@ -116,7 +101,17 @@ const BedView = ({ totalBeds = 20 }) => {
       <div className="bed-view-header">
         <h2 className="bed-view-title">
           <i className="fas fa-bed" style={{ marginRight: '10px' }}></i>
-          Bed Occupancy Overview
+          Bed Occupancy Overview 
+          <span style={{ 
+            fontSize: '14px', 
+            marginLeft: '10px', 
+            color: '#666',
+            background: '#e3f2fd',
+            padding: '4px 12px',
+            borderRadius: '20px'
+          }}>
+            Doctor View
+          </span>
         </h2>
         <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
           <div className="bed-stats">
@@ -133,7 +128,7 @@ const BedView = ({ totalBeds = 20 }) => {
             className="back-to-dashboard-btn"
             onClick={handleBackToDashboard}
             style={{
-              background: "linear-gradient(135deg, #1b44d6, #1e74ca)",
+              background: "linear-gradient(135deg, #1976d2, #42a5f5)",
               color: "#fff",
               padding: "8px 16px",
               border: "none",
@@ -149,7 +144,7 @@ const BedView = ({ totalBeds = 20 }) => {
             }}
             onMouseOver={(e) => {
               e.target.style.transform = "translateY(-2px)";
-              e.target.style.boxShadow = "0 4px 12px rgba(108,117,125,0.3)";
+              e.target.style.boxShadow = "0 4px 12px rgba(25, 118, 210, 0.3)";
             }}
             onMouseOut={(e) => {
               e.target.style.transform = "translateY(0px)";
@@ -241,4 +236,4 @@ const BedView = ({ totalBeds = 20 }) => {
   );
 };
 
-export default BedView;
+export default DoctorBedView;

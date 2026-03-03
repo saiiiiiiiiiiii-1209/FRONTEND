@@ -1221,8 +1221,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 30px;
-  padding-top: 20px;
   border-top: 2px dashed #e2e8f0;
 }
 
@@ -1249,6 +1247,7 @@
 .doctor-title {
   font-size: 12px;
   color: #64748b;
+  
 }
 
 .report-date-modern {
@@ -1338,4 +1337,116 @@
 .view-more-btn:hover {
   background: #667eea;
   color: white;
+}
+/* Patient card with delete button */
+.patient-card-modern.with-delete {
+  position: relative;
+  padding-right: 40px;
+}
+
+.delete-patient-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid #dc3545;
+  color: #dc3545;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.delete-patient-btn:hover {
+  background: #dc3545;
+  color: white;
+  transform: scale(1.1);
+}
+
+/* Delete confirmation popup */
+.delete-confirm-popup {
+  max-width: 400px !important;
+}
+
+.delete-icon {
+  font-size: 48px;
+  text-align: center;
+  margin: 20px 0;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.delete-message {
+  text-align: center;
+  font-size: 16px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.patient-details-summary {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.patient-details-summary p {
+  margin: 5px 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.patient-details-summary span {
+  font-weight: 600;
+  color: #666;
+}
+
+.delete-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.cancel-btn {
+  padding: 10px 20px;
+  border: 1px solid #6c757d;
+  background: white;
+  color: #6c757d;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.cancel-btn:hover {
+  background: #6c757d;
+  color: white;
+}
+
+.confirm-delete-btn {
+  padding: 10px 20px;
+  border: none;
+  background: #dc3545;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.confirm-delete-btn:hover {
+  background: #c82333;
+  transform: scale(1.05);
 }

@@ -10,6 +10,7 @@ function Appointment() {
     useAppointments();
     
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("all");
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -23,6 +24,7 @@ function Appointment() {
   const [editErrors, setEditErrors] = useState({});
   const [showPopup, setShowPopup] = useState(false);
   const [localAppointments, setLocalAppointments] = useState([]);
+  const [registeredPatients, setRegisteredPatients] = useState([]);
   const [symptomsDropdownOpen, setSymptomsDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -37,51 +39,113 @@ function Appointment() {
     "Bluish Skin", "Fainting", "Confusion"
   ];
 
-  // Fetch appointments from backend on mount
-  useEffect(() => {
-    fetchAppointmentsFromBackend();
-  }, []);
+  // ==================== HELPER FUNCTION TO SORT BY DATE AND TIME ====================
+  const sortByDateTime = (appointments) => {
+    return [...appointments].sort((a, b) => {
+      // First compare by date
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      
+      if (dateA < dateB) return -1; // Earlier date first
+      if (dateA > dateB) return 1;  // Later date last
+      
+      // If same date, compare by time
+      // Convert time strings to comparable format (HH:MM)
+      const timeA = a.time || "23:59"; // Default to end of day if no time
+      const timeB = b.time || "23:59";
+      
+      if (timeA < timeB) return -1; // Earlier time first
+      if (timeA > timeB) return 1;  // Later time last
+      
+      return 0; // Equal dates and times
+    });
+  };
 
-  // Fetch appointments from backend
+  // ==================== FILTER HANDLER ====================
+  const handleFilterClick = (type) => {
+    setFilterType(type);
+  };
+
+  const getFilteredCount = (status) => {
+    if (!localAppointments) return 0;
+    if (status === "all") return localAppointments.length;
+    return localAppointments.filter(a => a.status?.toLowerCase() === status.toLowerCase()).length;
+  };
+
+  // ==================== FETCH REGISTERED PATIENTS ====================
+  const fetchRegisteredPatients = async () => {
+    try {
+      const response = await fetch('http://localhost:8001/api/patients');
+      const data = await response.json();
+      if (data.success) {
+        setRegisteredPatients(data.data || []);
+        console.log(`✅ Loaded ${data.data?.length || 0} registered patients`);
+      }
+    } catch (error) {
+      console.error('Error fetching registered patients:', error);
+    }
+  };
+
+  // ==================== FETCH APPOINTMENTS ====================
   const fetchAppointmentsFromBackend = async () => {
     try {
       setLoading(true);
       console.log("📥 Fetching appointments from backend...");
-      const response = await fetch('http://localhost:8001/api/appointmentfindall');
+      
+      const response = await fetch('http://localhost:8001/api/appointments');
       const data = await response.json();
       
       if (response.ok && data.success) {
-        console.log("✅ Appointments fetched:", data.appointments.length);
-        setLocalAppointments(data.appointments);
-        setStats(data.stats);
+        console.log("✅ Appointments fetched:", data.appointments?.length || 0);
         
-        // Update localStorage as backup
-        localStorage.setItem('appointments', JSON.stringify(data.appointments));
+        const processedAppointments = (data.appointments || []).map(apt => ({
+          ...apt,
+          id: apt._id,
+          _id: apt._id
+        }));
+        
+        // ✅ Sort by date and time (earliest first)
+        const sortedAppointments = sortByDateTime(processedAppointments);
+        
+        console.log("📊 Appointments sorted by date/time (earliest first):", 
+          sortedAppointments.map(a => `${a.date} ${a.time}`));
+        
+        setLocalAppointments(sortedAppointments);
+        setStats(data.stats || {
+          total: 0,
+          pending: 0,
+          completed: 0,
+          cancelled: 0
+        });
+        
+        localStorage.setItem('appointments', JSON.stringify(sortedAppointments));
       } else {
         console.error("❌ Failed to fetch appointments:", data.message);
-        // Fallback to localStorage
         const savedAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-        setLocalAppointments(savedAppointments);
         
-        // Calculate stats from localStorage
-        const total = savedAppointments.length;
-        const pending = savedAppointments.filter(a => a.status === "Pending").length;
-        const completed = savedAppointments.filter(a => a.status === "Completed").length;
-        const cancelled = savedAppointments.filter(a => a.status === "Cancelled").length;
+        // ✅ Sort saved appointments by date and time (earliest first)
+        const sortedSaved = sortByDateTime(savedAppointments);
+        setLocalAppointments(sortedSaved);
+        
+        const total = sortedSaved.length;
+        const pending = sortedSaved.filter(a => a.status === "Pending").length;
+        const completed = sortedSaved.filter(a => a.status === "Completed").length;
+        const cancelled = sortedSaved.filter(a => a.status === "Cancelled").length;
         
         setStats({ total, pending, completed, cancelled });
       }
     } catch (error) {
       console.error("❌ Error fetching appointments:", error);
-      // Fallback to localStorage
       const savedAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-      setLocalAppointments(savedAppointments);
       
-      // Calculate stats from localStorage
-      const total = savedAppointments.length;
-      const pending = savedAppointments.filter(a => a.status === "Pending").length;
-      const completed = savedAppointments.filter(a => a.status === "Completed").length;
-      const cancelled = savedAppointments.filter(a => a.status === "Cancelled").length;
+      // ✅ Sort saved appointments by date and time (earliest first)
+      const sortedSaved = sortByDateTime(savedAppointments);
+      setLocalAppointments(sortedSaved);
+      
+      const total = sortedSaved.length;
+      const pending = sortedSaved.filter(a => a.status === "Pending").length;
+      const completed = sortedSaved.filter(a => a.status === "Completed").length;
+      const cancelled = sortedSaved.filter(a => a.status === "Cancelled").length;
       
       setStats({ total, pending, completed, cancelled });
     } finally {
@@ -89,28 +153,38 @@ function Appointment() {
     }
   };
 
-  // Fetch statistics from backend
   const fetchStats = async () => {
     try {
       const response = await fetch('http://localhost:8001/api/appointments/stats');
       const data = await response.json();
       
       if (response.ok && data.success) {
-        setStats(data.data);
+        setStats(data.stats);
       }
     } catch (error) {
       console.error("❌ Error fetching stats:", error);
     }
   };
 
-  // Sync local appointments with context appointments
+  useEffect(() => {
+    fetchAppointmentsFromBackend();
+    fetchRegisteredPatients();
+  }, []);
+
   useEffect(() => {
     if (appointments && appointments.length > 0) {
-      setLocalAppointments(appointments);
+      const processedAppointments = appointments.map(apt => ({
+        ...apt,
+        id: apt._id,
+        _id: apt._id
+      }));
+      // ✅ Sort by date and time (earliest first)
+      const sortedAppointments = sortByDateTime(processedAppointments);
+      setLocalAppointments(sortedAppointments);
     }
   }, [appointments]);
 
-  // ==================== ADD APPOINTMENT FUNCTION ====================
+  // ==================== ADD APPOINTMENT FUNCTION - Automatically sorted by date/time ====================
   const addAppointment = async (appointment) => {
     console.log("%c🟢🟢🟢 ADD APPOINTMENT CALLED 🟢🟢🟢", "color: green; font-size: 16px; font-weight: bold");
     console.log("📦 Data received from form:", appointment);
@@ -177,10 +251,11 @@ function Appointment() {
       if (response.ok && data.success) {
         console.log("%c✅ SUCCESS! Appointment saved to MongoDB", "color: green; font-size: 16px");
         console.log("📋 Appointment ID:", data.appointment.appointmentId);
+        console.log("📋 MongoDB _id:", data.appointment._id);
         
         const newAppointment = {
-          id: data.appointment._id,
           _id: data.appointment._id,
+          id: data.appointment._id,
           appointmentId: data.appointment.appointmentId,
           patientName: data.appointment.patientName,
           age: data.appointment.age,
@@ -196,23 +271,30 @@ function Appointment() {
           bookingTime: data.appointment.bookingTime
         };
         
-        setLocalAppointments(prev => [...prev, newAppointment]);
+        // ✅ Add new appointment and sort by date/time (earliest first)
+        setLocalAppointments(prev => {
+          const updated = [...prev, newAppointment];
+          // Sort by date and time (earliest first)
+          const sorted = sortByDateTime(updated);
+          console.log("📋 New appointment added and sorted by time");
+          return sorted;
+        });
         
-        // Update stats
         setStats(prev => ({
           ...prev,
           total: prev.total + 1,
           pending: prev.pending + 1
         }));
         
-        // Update localStorage as backup
         const existingAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
         const updatedAppointments = [...existingAppointments, newAppointment];
-        localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
+        // ✅ Save to localStorage with sorting
+        localStorage.setItem('appointments', JSON.stringify(sortByDateTime(updatedAppointments)));
         
         alert(`✅ Appointment booked successfully! ID: ${data.appointment.appointmentId}`);
         
         setShowPopup(false);
+        setSelectedPatientForAppointment(null);
         
         return newAppointment;
       } else {
@@ -227,29 +309,67 @@ function Appointment() {
     }
   };
 
-  /* =======================
-     FILTER
-  ========================*/
+  // ==================== FILTERED APPOINTMENTS ====================
   const filteredAppointments = useMemo(() => {
     if (!localAppointments) return [];
 
-    return [...localAppointments]
-      .filter((apt) => {
-        if (!searchTerm) return true;
-        const searchLower = searchTerm.toLowerCase();
+    let filtered = [...localAppointments];
+
+    if (filterType !== "all") {
+      filtered = filtered.filter(apt => 
+        apt.status?.toLowerCase() === filterType.toLowerCase()
+      );
+    }
+
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((apt) => {
         return (
           apt.patientName?.toLowerCase().includes(searchLower) ||
           apt.phone?.includes(searchTerm) ||
           apt.appointmentId?.toLowerCase().includes(searchLower) ||
           apt.email?.toLowerCase().includes(searchLower)
         );
-      })
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [localAppointments, searchTerm]);
+      });
+    }
 
-  /* =======================
-     VALIDATION FUNCTIONS
-  ========================*/
+    // ✅ Sort by date and time (earliest first)
+    return sortByDateTime(filtered);
+  }, [localAppointments, searchTerm, filterType]);
+
+  // ==================== STATE FOR PATIENT TO APPOINTMENT ====================
+  const [showAppointmentFromPatient, setShowAppointmentFromPatient] = useState(false);
+  const [selectedPatientForAppointment, setSelectedPatientForAppointment] = useState(null);
+
+  // ==================== CREATE APPOINTMENT FROM REGISTERED PATIENT ====================
+  const createAppointmentFromPatient = (patient) => {
+    // Set default appointment time (current time + 1 hour)
+    const now = new Date();
+    now.setHours(now.getHours() + 1);
+    const defaultTime = now.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: false 
+    });
+    
+    // Create appointment data object
+    const appointmentData = {
+      patientName: patient.patientName,
+      age: patient.age,
+      gender: patient.gender,
+      phone: patient.phone,
+      email: patient.email || '',
+      symptoms: Array.isArray(patient.symptoms) ? patient.symptoms : (patient.symptoms ? [patient.symptoms] : []),
+      date: new Date().toISOString().split('T')[0],
+      time: defaultTime,
+      notes: "Appointment created from registered patient"
+    };
+    
+    setSelectedPatientForAppointment(appointmentData);
+    setShowPopup(true);
+  };
+
+  // ==================== VALIDATION FUNCTIONS ====================
   const validatePhone = (phone) => {
     if (!phone) return false;
     const cleaned = phone.replace(/\D/g, '');
@@ -315,9 +435,7 @@ function Appointment() {
     return Object.keys(newErrors).length === 0;
   };
 
-  /* =======================
-     HANDLERS
-  ========================*/
+  // ==================== HANDLERS ====================
   const handleView = (apt) => {
     setSelectedAppointment(apt);
     setShowViewPopup(true);
@@ -400,7 +518,15 @@ function Appointment() {
         symptoms: formData.symptoms?.join(", ") || ""
       };
       
-      const response = await fetch(`http://localhost:8001/api/appointments/${selectedAppointment._id || selectedAppointment.id}`, {
+      const mongoId = formData._id || selectedAppointment._id;
+      
+      if (!mongoId) {
+        throw new Error("MongoDB ID not found");
+      }
+      
+      console.log("✏️ Updating appointment with ID:", mongoId);
+      
+      const response = await fetch(`http://localhost:8001/api/appointments/${mongoId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -413,20 +539,26 @@ function Appointment() {
       if (response.ok && data.success) {
         console.log("✅ Appointment updated in MongoDB:", data);
         
-        setLocalAppointments(prev => 
-          prev.map(apt => (apt._id === selectedAppointment._id || apt.id === selectedAppointment.id) 
-            ? { ...apt, ...updatedData } 
-            : apt)
-        );
+        if (data.stats) {
+          setStats(data.stats);
+        }
         
-        // Update localStorage as backup
+        setLocalAppointments(prev => {
+          const updated = prev.map(apt => (apt._id === mongoId) 
+            ? { ...apt, ...updatedData } 
+            : apt
+          );
+          // ✅ Re-sort after update (in case date/time changed)
+          return sortByDateTime(updated);
+        });
+        
         const existingAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
         const updatedAppointments = existingAppointments.map(apt => 
-          (apt._id === selectedAppointment._id || apt.id === selectedAppointment.id) 
+          (apt._id === mongoId) 
             ? { ...apt, ...updatedData } 
             : apt
         );
-        localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
+        localStorage.setItem('appointments', JSON.stringify(sortByDateTime(updatedAppointments)));
         
         setShowEditPopup(false);
         alert(`✅ Appointment updated successfully!`);
@@ -441,14 +573,20 @@ function Appointment() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this appointment?")) return;
+  const handleDelete = async (apt) => {
+    if (!apt) return;
+    
+    const mongoId = apt._id;
+    
+    if (!mongoId) {
+      alert("❌ Cannot delete: MongoDB ID not found");
+      return;
+    }
+    
+    if (!window.confirm(`Are you sure you want to delete appointment for ${apt.patientName}?`)) return;
     
     try {
       setIsLoading(true);
-      
-      const appointment = localAppointments.find(apt => apt.id === id || apt._id === id);
-      const mongoId = appointment?._id || id;
       
       const response = await fetch(`http://localhost:8001/api/appointments/${mongoId}`, {
         method: 'DELETE'
@@ -459,21 +597,14 @@ function Appointment() {
       if (response.ok && data.success) {
         console.log("✅ Appointment deleted from MongoDB");
         
-        // Update stats before removing
-        const deletedAppointment = localAppointments.find(apt => apt.id === id || apt._id === id);
-        if (deletedAppointment) {
-          setStats(prev => ({
-            ...prev,
-            total: prev.total - 1,
-            [deletedAppointment.status.toLowerCase()]: prev[deletedAppointment.status.toLowerCase()] - 1
-          }));
+        if (data.stats) {
+          setStats(data.stats);
         }
         
-        setLocalAppointments(prev => prev.filter(apt => apt.id !== id && apt._id !== id));
+        setLocalAppointments(prev => prev.filter(a => a._id !== mongoId));
         
-        // Update localStorage as backup
         const existingAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-        const updatedAppointments = existingAppointments.filter(apt => apt.id !== id && apt._id !== id);
+        const updatedAppointments = existingAppointments.filter(a => a._id !== mongoId);
         localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
         
         alert("✅ Appointment deleted successfully!");
@@ -488,18 +619,36 @@ function Appointment() {
     }
   };
 
-  const handleStatusChange = async (id, status) => {
+  // ==================== handleStatusChange with restrictions ====================
+  const handleStatusChange = async (apt, newStatus) => {
     try {
-      const appointment = localAppointments.find(apt => apt.id === id || apt._id === id);
-      const oldStatus = appointment?.status;
-      const mongoId = appointment?._id || id;
+      const mongoId = apt._id;
+      const oldStatus = apt?.status;
+      
+      if (!mongoId) {
+        alert("❌ Cannot update: MongoDB ID not found");
+        return;
+      }
+
+      if (oldStatus === 'Completed' || oldStatus === 'Cancelled') {
+        if (newStatus === 'Pending') {
+          alert("❌ Cannot change status from Completed/Cancelled back to Pending!");
+          return;
+        }
+      }
+      
+      console.log(`🔄 Changing status from ${oldStatus} to ${newStatus}`);
+      
+      setLocalAppointments(prev => 
+        prev.map(a => a._id === mongoId ? { ...a, status: newStatus } : a)
+      );
       
       const response = await fetch(`http://localhost:8001/api/appointments/${mongoId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status: newStatus })
       });
       
       const data = await response.json();
@@ -507,24 +656,19 @@ function Appointment() {
       if (response.ok && data.success) {
         console.log("✅ Status updated in MongoDB");
         
-        // Update stats
-        setStats(prev => ({
-          ...prev,
-          [oldStatus.toLowerCase()]: prev[oldStatus.toLowerCase()] - 1,
-          [status.toLowerCase()]: prev[status.toLowerCase()] + 1
-        }));
+        if (data.stats) {
+          setStats(data.stats);
+        }
         
-        setLocalAppointments(prev => 
-          prev.map(apt => (apt.id === id || apt._id === id) ? { ...apt, status } : apt)
-        );
-        
-        // Update localStorage as backup
         const existingAppointments = JSON.parse(localStorage.getItem('appointments') || '[]');
-        const updatedAppointments = existingAppointments.map(apt => 
-          (apt.id === id || apt._id === id) ? { ...apt, status } : apt
+        const updatedAppointments = existingAppointments.map(a => 
+          a._id === mongoId ? { ...a, status: newStatus } : a
         );
         localStorage.setItem('appointments', JSON.stringify(updatedAppointments));
       } else {
+        setLocalAppointments(prev => 
+          prev.map(a => a._id === mongoId ? { ...a, status: oldStatus } : a)
+        );
         throw new Error(data.message || "Failed to update status");
       }
     } catch (error) {
@@ -559,7 +703,6 @@ function Appointment() {
   return (
     <div className="appointments-page">
 
-      {/* HEADER */}
       <div className="page-header">
         <div>
           <h1>📋 Appointment Management</h1>
@@ -570,30 +713,84 @@ function Appointment() {
         </button>
       </div>
 
-      {/* SUMMARY */}
       <div className="summary-stats">
-        <div className="summary-card" style={{ borderLeft: "4px solid #0d6efd" }}>
+        <div 
+          className={`summary-card ${filterType === 'all' ? 'active-filter' : ''}`}
+          style={{ 
+            borderLeft: "4px solid #0d6efd",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            opacity: filterType === 'all' ? 1 : 0.8,
+            transform: filterType === 'all' ? 'scale(1.02)' : 'scale(1)'
+          }}
+          onClick={() => handleFilterClick('all')}
+          title={`Click to show all appointments (${getFilteredCount('all')} appointments)`}
+        >
           <h4>📅 TOTAL</h4>
           <h2>{stats.total}</h2>
+          {filterType === 'all' && (
+            <small style={{color: '#0d6efd', fontWeight: 'bold'}}></small>
+          )}
         </div>
 
-        <div className="summary-card" style={{ borderLeft: "4px solid #ffc107" }}>
+        <div 
+          className={`summary-card ${filterType === 'pending' ? 'active-filter' : ''}`}
+          style={{ 
+            borderLeft: "4px solid #ffc107",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            opacity: filterType === 'pending' ? 1 : 0.8,
+            transform: filterType === 'pending' ? 'scale(1.02)' : 'scale(1)'
+          }}
+          onClick={() => handleFilterClick('pending')}
+          title={`Click to show pending appointments (${getFilteredCount('pending')} appointments)`}
+        >
           <h4>⏳ PENDING</h4>
           <h2>{stats.pending}</h2>
+          {filterType === 'pending' && (
+            <small style={{color: '#ffc107', fontWeight: 'bold'}}></small>
+          )}
         </div>
 
-        <div className="summary-card" style={{ borderLeft: "4px solid #28a745" }}>
+        <div 
+          className={`summary-card ${filterType === 'completed' ? 'active-filter' : ''}`}
+          style={{ 
+            borderLeft: "4px solid #28a745",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            opacity: filterType === 'completed' ? 1 : 0.8,
+            transform: filterType === 'completed' ? 'scale(1.02)' : 'scale(1)'
+          }}
+          onClick={() => handleFilterClick('completed')}
+          title={`Click to show completed appointments (${getFilteredCount('completed')} appointments)`}
+        >
           <h4>✔ COMPLETED</h4>
           <h2>{stats.completed}</h2>
+          {filterType === 'completed' && (
+            <small style={{color: '#28a745', fontWeight: 'bold'}}></small>
+          )}
         </div>
 
-        <div className="summary-card" style={{ borderLeft: "4px solid #dc3545" }}>
+        <div 
+          className={`summary-card ${filterType === 'cancelled' ? 'active-filter' : ''}`}
+          style={{ 
+            borderLeft: "4px solid #dc3545",
+            cursor: "pointer",
+            transition: "all 0.2s",
+            opacity: filterType === 'cancelled' ? 1 : 0.8,
+            transform: filterType === 'cancelled' ? 'scale(1.02)' : 'scale(1)'
+          }}
+          onClick={() => handleFilterClick('cancelled')}
+          title={`Click to show cancelled appointments (${getFilteredCount('cancelled')} appointments)`}
+        >
           <h4>❌ CANCELLED</h4>
           <h2>{stats.cancelled}</h2>
+          {filterType === 'cancelled' && (
+            <small style={{color: '#dc3545', fontWeight: 'bold'}}></small>
+          )}
         </div>
       </div><br />
 
-      {/* SEARCH */}
       <div className="search-container-fluid">
         <input
           type="text"
@@ -604,13 +801,11 @@ function Appointment() {
         />
       </div>
 
-      {/* TABLE */}
       <div className="table-container">
         <table className="data-table">
           <thead>
             <tr>
               <th>Sr. No.</th>
-              <th>Appointment ID</th>
               <th>Patient</th>
               <th>Age/Gender</th>
               <th>Phone</th>
@@ -627,9 +822,6 @@ function Appointment() {
               filteredAppointments.map((apt, index) => (
                 <tr key={apt._id || apt.id || index}>
                   <td>{index + 1}</td>
-                  <td>
-                    <strong>{apt.appointmentId || 'N/A'}</strong>
-                  </td>
                   <td>{apt.patientName}</td>
                   <td>
                     {apt.age || "-"} / {apt.gender || "-"}
@@ -642,9 +834,7 @@ function Appointment() {
                   <td>
                     <select
                       value={apt.status}
-                      onChange={(e) =>
-                        handleStatusChange(apt._id || apt.id, e.target.value)
-                      }
+                      onChange={(e) => handleStatusChange(apt, e.target.value)}
                       style={{
                         padding: "5px 10px",
                         borderRadius: "4px",
@@ -663,7 +853,9 @@ function Appointment() {
                           apt.status === "Completed" ? "#c3e6cb" : "#f5c6cb"
                       }}
                     >
-                      <option value="Pending">Pending</option>
+                      <option value="Pending" disabled={apt.status === 'Completed' || apt.status === 'Cancelled'}>
+                        Pending {apt.status === 'Completed' ? '(locked)' : apt.status === 'Cancelled' ? '(locked)' : ''}
+                      </option>
                       <option value="Completed">Completed</option>
                       <option value="Cancelled">Cancelled</option>
                     </select>
@@ -710,7 +902,7 @@ function Appointment() {
 
                     <button
                       className="delete-btn"
-                      onClick={() => handleDelete(apt._id || apt.id)}
+                      onClick={() => handleDelete(apt)}
                       title="Delete Appointment"
                       style={{
                         background: "none",
@@ -731,8 +923,12 @@ function Appointment() {
               ))
             ) : (
               <tr>
-                <td colSpan="10" style={{ textAlign: "center", padding: "30px", color: "#666" }}>
-                  {searchTerm ? `No appointments found matching "${searchTerm}"` : "No appointments found"}
+                <td colSpan="9" style={{ textAlign: "center", padding: "30px", color: "#666" }}>
+                  {searchTerm 
+                    ? `No appointments found matching "${searchTerm}"` 
+                    : filterType !== 'all'
+                    ? `No ${filterType} appointments found`
+                    : "No appointments found"}
                 </td>
               </tr>
             )}
@@ -785,11 +981,11 @@ function Appointment() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-              {/* Appointment Information */}
               <div style={{ gridColumn: "span 2", background: "#f8f9fa", padding: "15px", borderRadius: "8px" }}>
                 <h3 style={{ margin: "0 0 15px 0", color: "#0d6efd", fontSize: "16px" }}>Appointment Information</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
                   <div><strong>Appointment ID:</strong> {selectedAppointment.appointmentId || 'N/A'}</div>
+                  <div><strong>MongoDB ID:</strong> <small>{selectedAppointment._id}</small></div>
                   <div><strong>Status:</strong> 
                     <span style={{
                       marginLeft: "8px",
@@ -808,11 +1004,10 @@ function Appointment() {
                   <div><strong>Date:</strong> {selectedAppointment.date}</div>
                   <div><strong>Time:</strong> {selectedAppointment.time}</div>
                   <div><strong>Department:</strong> {selectedAppointment.type || "Cardiology"}</div>
-                  <div><strong>Doctor:</strong> {selectedAppointment.doctor || "Dr. Pranjal Patil"}</div>
+                  
                 </div>
               </div>
 
-              {/* Patient Information */}
               <div style={{ gridColumn: "span 2", background: "#f8f9fa", padding: "15px", borderRadius: "8px" }}>
                 <h3 style={{ margin: "0 0 15px 0", color: "#0d6efd", fontSize: "16px" }}>Patient Information</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
@@ -823,7 +1018,6 @@ function Appointment() {
                 </div>
               </div>
 
-              {/* Symptoms */}
               {selectedAppointment.symptoms && (
                 <div style={{ gridColumn: "span 2", background: "#f8f9fa", padding: "15px", borderRadius: "8px" }}>
                   <h3 style={{ margin: "0 0 15px 0", color: "#0d6efd", fontSize: "16px" }}>Symptoms</h3>
@@ -831,7 +1025,6 @@ function Appointment() {
                 </div>
               )}
 
-              {/* Notes */}
               {selectedAppointment.notes && (
                 <div style={{ gridColumn: "span 2", background: "#f8f9fa", padding: "15px", borderRadius: "8px" }}>
                   <h3 style={{ margin: "0 0 15px 0", color: "#0d6efd", fontSize: "16px" }}>Additional Notes</h3>
@@ -839,7 +1032,6 @@ function Appointment() {
                 </div>
               )}
 
-              {/* Booking Information */}
               <div style={{ gridColumn: "span 2", background: "#f8f9fa", padding: "15px", borderRadius: "8px" }}>
                 <h3 style={{ margin: "0 0 15px 0", color: "#0d6efd", fontSize: "16px" }}>Booking Information</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
@@ -915,7 +1107,6 @@ function Appointment() {
 
             <form onSubmit={handleSave}>
               <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-                {/* Patient Details */}
                 <div style={{ background: "#f8f9fa", padding: "15px", borderRadius: "8px" }}>
                   <h3 style={{ margin: "0 0 15px 0", color: "#0d6efd", fontSize: "16px" }}>Patient Details</h3>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
@@ -986,7 +1177,6 @@ function Appointment() {
                   </div>
                 </div>
 
-                {/* Symptoms */}
                 <div style={{ background: "#f8f9fa", padding: "15px", borderRadius: "8px" }}>
                   <h3 style={{ margin: "0 0 15px 0", color: "#0d6efd", fontSize: "16px" }}>Symptoms (Optional)</h3>
                   <div className="symptoms-container">
@@ -1073,7 +1263,6 @@ function Appointment() {
                   </div>
                 </div>
 
-                {/* Appointment Details */}
                 <div style={{ background: "#f8f9fa", padding: "15px", borderRadius: "8px" }}>
                   <h3 style={{ margin: "0 0 15px 0", color: "#0d6efd", fontSize: "16px" }}>Appointment Details</h3>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
@@ -1111,15 +1300,7 @@ function Appointment() {
                         style={inputStyle}
                       />
                     </div>
-                    <div>
-                      <input
-                        name="doctor"
-                        placeholder="Doctor"
-                        value={formData.doctor || "Dr. Pranjal Patil"}
-                        onChange={handleEditChange}
-                        style={inputStyle}
-                      />
-                    </div>
+                    
                     <div style={{ gridColumn: "span 2" }}>
                       <textarea
                         name="notes"
@@ -1177,9 +1358,11 @@ function Appointment() {
           onClose={() => {
             console.log("Closing popup");
             setShowPopup(false);
+            setSelectedPatientForAppointment(null);
           }}
           addAppointment={addAppointment}
           appointments={localAppointments}
+          initialPatientData={selectedPatientForAppointment}
         />
       )}
     </div>

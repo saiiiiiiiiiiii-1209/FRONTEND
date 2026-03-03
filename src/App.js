@@ -25,6 +25,8 @@ import DoctorPatients from "./Webpages/doctor/DoctorPatients";
 import DoctorProfile from "./Webpages/doctor/DoctorProfile";
 import Patientlist from "./Webpages/Patientlist";
 import Admitlist from "./Webpages/Admitlist";
+import DoctorBedView from './Webpages/doctor/DoctorBedView';
+import DoctorAdmit from "./Webpages/doctor/Doctoradmit";
 
 function App() {
   const location = useLocation();
@@ -43,6 +45,8 @@ function App() {
           <Route path="appointments" element={<DoctorAppointments />} />
           <Route path="patients" element={<DoctorPatients />} />
           <Route path="profile" element={<DoctorProfile />} />
+          <Route path="/doctor-dashboard/DoctorBedView" element={<DoctorBedView />}/>
+          <Route path="/doctor-dashboard/admitlist" element={<DoctorAdmit />} />
         </Route>
 
         {/* RECEPTIONIST DASHBOARD ROUTES */}
@@ -68,7 +72,7 @@ function App() {
         </Route>
 
         {/* 404 REDIRECT */}
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<Navigate to="/receptionist-dashboard" />} />
       </Routes>
     </AnimatePresence>
   );

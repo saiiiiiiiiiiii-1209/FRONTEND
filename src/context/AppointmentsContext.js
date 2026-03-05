@@ -13,7 +13,6 @@ export const AppointmentsProvider = ({ children }) => {
         const parsed = JSON.parse(savedAppointments);
         if (Array.isArray(parsed)) {
           setAppointments(parsed);
-          console.log("📂 Loaded appointments:", parsed.length); // DEBUG
         }
       } catch (error) {
         console.error('Error loading appointments:', error);
@@ -25,7 +24,6 @@ export const AppointmentsProvider = ({ children }) => {
   useEffect(() => {
     if (appointments.length > 0) {
       localStorage.setItem('appointments', JSON.stringify(appointments));
-      console.log("💾 Saved appointments:", appointments.length); // DEBUG
     }
   }, [appointments]);
 
@@ -34,8 +32,6 @@ export const AppointmentsProvider = ({ children }) => {
   };
 
   const addAppointment = (appointmentData) => {
-    console.log("➕ Adding appointment:", appointmentData); // DEBUG
-    
     const newAppointment = {
       id: generateId(),
       ...appointmentData,
@@ -48,27 +44,21 @@ export const AppointmentsProvider = ({ children }) => {
       }),
     };
     
-    setAppointments(prev => {
-      const updated = [...prev, newAppointment];
-      console.log("✅ Updated appointments array:", updated.length); // DEBUG
-      return updated;
-    });
-    
+    setAppointments(prev => [...prev, newAppointment]);
     return newAppointment;
   };
 
   const updateAppointment = (id, updatedData) => {
     setAppointments(prev => 
-      prev.map(apt => apt.id === id ? { ...updatedData,...apt  } : apt)
+      prev.map(apt => apt.id === id ? { ...apt, ...updatedData } : apt)
     );
   };
 
   const deleteAppointment = (id) => {
-  setAppointments((prev) =>
-    prev.filter((appointment) => appointment.id !== id)
-  );
-};
-
+    setAppointments((prev) =>
+      prev.filter((appointment) => appointment.id !== id)
+    );
+  };
 
   const getAppointmentStats = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -104,3 +94,4 @@ export const useAppointments = () => {
 };
 
 export default AppointmentsContext;
+

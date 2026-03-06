@@ -1488,7 +1488,7 @@ function AdmitPatientForm() {
     patientName: "",
     patientId: "",
     age: "",
-    gender: "", // Changed from "Male" to empty string
+    gender: "",
     address: "",
     phone: "",
     nameOfKin: "",
@@ -1497,7 +1497,6 @@ function AdmitPatientForm() {
     fromDate: new Date().toISOString().split('T')[0],
     toDate: "",
     symptoms: [],
-    // admittingDoctor: ""  // Completely removed
   });
 
   const [errors, setErrors] = useState({});
@@ -1609,11 +1608,13 @@ function AdmitPatientForm() {
     return "";
   };
 
+  // ========== FIXED: Emergency contact is now OPTIONAL ==========
   const validateKinContact = (contact) => {
-    if (!contact || contact === "") return "Emergency contact number is required";
+    if (!contact || contact === "") return ""; // Empty is valid (optional)
+    
     const cleaned = contact.replace(/\D/g, '');
-    if (cleaned.length !== 10) return "Emergency contact must be exactly 10 digits";
-    if (!['7', '8', '9'].includes(cleaned[0])) return "Emergency contact must start with 7, 8, or 9";
+    if (cleaned.length !== 10) return "Emergency contact must be exactly 10 digits if provided";
+    if (!['7', '8', '9'].includes(cleaned[0])) return "Emergency contact must start with 7, 8, or 9 if provided";
     return "";
   };
 
@@ -1651,8 +1652,6 @@ function AdmitPatientForm() {
     return "";
   };
 
-  // Removed validateAdmittingDoctor function completely
-
   const isBedOccupied = (bedNo) => {
     return existingAdmissions.some(adm => 
       adm.bedNo === bedNo && adm.status === "Admitted"
@@ -1680,8 +1679,9 @@ function AdmitPatientForm() {
     const phoneError = validatePhone(formData.phone, "Phone");
     if (phoneError) newErrors.phone = phoneError;
 
+    // ========== FIXED: Kin contact validation is now optional ==========
     const kinError = validateKinContact(formData.kinContact);
-    if (kinError) newErrors.kinContact = kinError;
+    if (kinError) newErrors.kinContact = kinError; // Only shows error if validation fails, not for empty
 
     const bedError = validateBedNo(formData.bedNo);
     if (bedError) newErrors.bedNo = bedError;
@@ -1693,8 +1693,6 @@ function AdmitPatientForm() {
       const toDateError = validateToDate(formData.toDate, formData.fromDate);
       if (toDateError) newErrors.toDate = toDateError;
     }
-
-    // Removed admitting doctor validation
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -1711,7 +1709,7 @@ function AdmitPatientForm() {
       if (value === "" || /^\d+$/.test(value)) {
         setFormData(prev => ({ ...prev, [name]: value }));
       }
-    } else if (name === "patientName" || name === "nameOfKin") { // Removed admittingDoctor
+    } else if (name === "patientName" || name === "nameOfKin") {
       if (value === "" || /^[a-zA-Z\s\.\-']*$/.test(value)) {
         setFormData(prev => ({ ...prev, [name]: value }));
       }
@@ -1780,22 +1778,37 @@ function AdmitPatientForm() {
     // Create a unique patient ID if not present
     const patientId = patient.id || patient._id || `PAT-${Date.now()}`;
     
+    // Parse symptoms if they exist
+    let symptomsArray = [];
+    
+    // Check if patient has symptoms
+    if (patient.symptoms) {
+      if (Array.isArray(patient.symptoms)) {
+        symptomsArray = patient.symptoms;
+      } else if (typeof patient.symptoms === 'string') {
+        symptomsArray = patient.symptoms.split(',').map(s => s.trim()).filter(s => s);
+      } else if (patient.symptoms && typeof patient.symptoms === 'object') {
+        symptomsArray = Object.values(patient.symptoms);
+      }
+    }
+    
+    console.log("📋 Parsed symptoms from patient:", symptomsArray);
+    
     setFormData(prev => ({
       ...prev,
       patientName: patient.patientName || "",
       patientId: patientId,
       age: patient.age?.toString() || "",
-      gender: patient.gender || "", // Keep as empty if not provided
+      gender: patient.gender || "",
       address: patient.address || "",
       phone: patient.phone || "",
       nameOfKin: patient.nameOfKin || "",
       kinContact: patient.kinContact || "",
+      symptoms: symptomsArray,
       // Keep existing values for other fields
       bedNo: prev.bedNo,
       fromDate: prev.fromDate,
       toDate: prev.toDate,
-      // admittingDoctor removed
-      symptoms: prev.symptoms
     }));
     
     // IMPORTANT: Set selectedPatientValid to true
@@ -1808,6 +1821,8 @@ function AdmitPatientForm() {
     if (errors.patientName) {
       setErrors(prev => ({ ...prev, patientName: "" }));
     }
+    
+    console.log("✅ Updated form data with symptoms:", symptomsArray);
   };
 
   const handleSubmit = async (e) => {
@@ -1857,7 +1872,7 @@ function AdmitPatientForm() {
       return;
     }
 
-    // Prepare submission data (removed admittingDoctor)
+    // Prepare submission data
     const submissionData = {
       id: `ADM-${Date.now()}`,
       patientName: formData.patientName,
@@ -1890,22 +1905,18 @@ function AdmitPatientForm() {
 
       const data = await response.json();
 
-      // ========== FIXED: Added bed status update code here ==========
       if (data.success) {
         alert(`✅ Patient ${formData.patientName} admitted to Bed ${formattedBed}`);
         
-        // ===== ADD THIS: Force bed status update =====
+        // Update bed status in bed management system
         try {
-          // First, get all beds to find the bed ID
           const bedsResponse = await fetch('http://localhost:8005/api/beds');
           const bedsData = await bedsResponse.json();
           const beds = bedsData.data || bedsData;
           
-          // Find the bed with matching bed number
           const bed = beds.find(b => b.bedNumber === formattedBed);
           
           if (bed && bed._id) {
-            // Update the bed status to Occupied
             await fetch(`http://localhost:8005/api/beds/${bed._id}`, {
               method: 'PUT',
               headers: {
@@ -1917,8 +1928,6 @@ function AdmitPatientForm() {
               })
             });
             console.log(`✅ Bed ${formattedBed} status updated to Occupied`);
-          } else {
-            console.log(`⚠️ Bed ${formattedBed} not found in bed management system`);
           }
         } catch (error) {
           console.error('Error updating bed status:', error);
@@ -2006,6 +2015,11 @@ function AdmitPatientForm() {
                     >
                       <strong>{patient.patientName}</strong>
                       <span>Age: {patient.age} | Phone: {patient.phone}</span>
+                      {patient.symptoms && (
+                        <span style={{ fontSize: '10px', color: '#667eea', marginLeft: '5px' }}>
+                          🩺 {Array.isArray(patient.symptoms) ? patient.symptoms.length : 'Has'} symptoms
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -2082,19 +2096,19 @@ function AdmitPatientForm() {
 
             <div className="form-row">
               <div className="form-group">
-                <label>Emergency Contact *</label>
+                <label>Emergency Contact (Optional)</label>
                 <input
                   type="tel"
                   name="kinContact"
                   value={formData.kinContact}
                   onChange={handleChange}
-                  placeholder="10-digit number (numbers only)"
+                  placeholder="10-digit number (optional)"
                   maxLength="10"
-                  required
                   disabled={shouldDisablePatientFields()}
                   className={errors.kinContact ? "error" : ""}
                 />
                 {errors.kinContact && <span className="error-message">{errors.kinContact}</span>}
+                <small className="field-hint">Not required, can be left empty</small>
               </div>
             </div>
           </div>
@@ -2138,7 +2152,7 @@ function AdmitPatientForm() {
               
               <div className="form-group">
                 <label>Expected Discharge Date</label>
-                <input
+                <input style={{marginTop:"22px"}}
                   type="date"
                   name="toDate"
                   value={formData.toDate}
@@ -2151,10 +2165,8 @@ function AdmitPatientForm() {
               </div>
             </div>
 
-            {/* Admitting Doctor field completely removed */}
-
             <div className="form-section">
-              <h4>Symptoms (Optional)</h4>
+              <h4>Symptoms {formData.symptoms.length > 0 && `(${formData.symptoms.length} selected)`}</h4>
               <div className="symptoms-container">
                 <div 
                   className={`symptoms-select-box ${symptomsDropdownOpen ? 'open' : ''}`}

@@ -313,8 +313,8 @@
 }
 
 .patient-name {
-  font-weight: 600;
-  color: #0a2540;
+  /* font-weight: 600;
+  color: #0a2540; */
 }
 
 .symptoms-cell {

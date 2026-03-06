@@ -997,7 +997,7 @@
 .report-body {
   padding: 30px;
   background: #f8fafc;
-  /* max-height: 70vh; */
+  max-height: 70vh;
   overflow-y: auto;
 }
 

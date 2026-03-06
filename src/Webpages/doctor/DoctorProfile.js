@@ -1,30 +1,40 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 // ==================== DOCTOR PROFILE PAGE ====================
-// Uses the EXACT SAME CSS classes from ReceptionistDashboard.css
-// page-header, add-btn, popup-overlay, popup-card, popup-form-group, etc.
-// Added: Profile photo upload with preview
-
 function DoctorProfile() {
-    // ==================== STATE ====================
-    const [doctorInfo, setDoctorInfo] = useState({
-        name: "Dr. Pranjal Patil",
-        specialization: "Cardiology",
-        department: "Cardiology",
-        phone: "9876543210",
-        email: "pranjal.patil@hospital.com",
-        address: "123 Medical Center, Nashik, Maharashtra",
-        experience: "8 years",
-        licenseNumber: "MH123456789",
-        qualifications: "MBBS, MD Cardiology",
-        joinDate: "2016-03-15",
-        profilePhoto: null,
+    // ==================== STATE with Local Storage ====================
+    const [doctorInfo, setDoctorInfo] = useState(() => {
+        // Local storage se data fetch karo
+        const savedData = localStorage.getItem('doctorProfile');
+        if (savedData) {
+            return JSON.parse(savedData);
+        }
+        // Agar koi data nahi hai to default values use karo
+        return {
+            name: "Dr. Pranjal Patil",
+            specialization: "Cardiology",
+            department: "Cardiology",
+            phone: "9876543210",
+            email: "pranjal.patil@hospital.com",
+            address: "123 Medical Center, Nashik, Maharashtra",
+            experience: "8 years",
+            licenseNumber: "MH123456789",
+            qualifications: "MBBS, MD Cardiology",
+            joinDate: "2016-03-15",
+            profilePhoto: null,
+        };
     });
 
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({ ...doctorInfo });
     const [photoPreview, setPhotoPreview] = useState(null);
     const fileInputRef = useRef(null);
+
+    // ==================== Local Storage Sync ====================
+    // Jab bhi doctorInfo change ho, local storage update karo
+    useEffect(() => {
+        localStorage.setItem('doctorProfile', JSON.stringify(doctorInfo));
+    }, [doctorInfo]);
 
     // ==================== HANDLERS ====================
     const handleChange = (e) => {
@@ -66,7 +76,7 @@ function DoctorProfile() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        setDoctorInfo(formData);
+        setDoctorInfo(formData); // Ye local storage bhi update karega due to useEffect
         setIsEditing(false);
         alert("✅ Profile updated successfully!");
     };
@@ -126,7 +136,7 @@ function DoctorProfile() {
                                     fontSize: "32px", fontWeight: "700", color: "white",
                                     border: "3px solid rgba(255,255,255,0.3)"
                                 }}>
-                                    {doctorInfo.name.split(" ").slice(1, 2)[0]?.charAt(0) || "D"}
+                                    {doctorInfo.name.split(" ")[1]?.charAt(0) || doctorInfo.name.charAt(0)}
                                 </div>
                             )}
                             <div>
@@ -233,7 +243,7 @@ function DoctorProfile() {
                                         border: "3px solid #e2e8f0",
                                         boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
                                     }}>
-                                        {formData.name.split(" ").slice(1, 2)[0]?.charAt(0) || "D"}
+                                        {formData.name.split(" ")[1]?.charAt(0) || formData.name.charAt(0)}
                                     </div>
                                 )}
                             </div>

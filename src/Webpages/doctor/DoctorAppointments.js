@@ -300,7 +300,7 @@ function DoctorAppointments() {
             </div>
 
             {/* ==================== FILTER INDICATOR ==================== */}
-            {(statusFilter !== "all" || searchTerm) && (
+            {/* {(statusFilter !== "all" || searchTerm) && (
                 <div style={{
                     padding: "10px 16px",
                     borderRadius: "8px",
@@ -338,7 +338,7 @@ function DoctorAppointments() {
                         Clear Filter ✕
                     </button>
                 </div>
-            )}
+            )} */}
 
             {/* ==================== SEARCH ==================== */}
             <div className="filters-section">
